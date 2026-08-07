@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hệ thống giao dịch EMA · Bollinger · MACD · HH&LL — Williams %R</title>
+<meta name="description" content="Hệ thống giao dịch kỹ thuật kết hợp EMA, Bollinger Bands, MACD, HH&LL Scalper và bộ lọc Williams %R. Quy tắc Buy/Sell, giữ lệnh, thoát lệnh, quản lý rủi ro — minh hoạ thực chiến trên Vàng, Bitcoin, Dầu WTI.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%2300E676%22/><text x=%2250%22 y=%2268%22 font-size=%2258%22 font-family=%22monospace%22 font-weight=%22700%22 text-anchor=%22middle%22 fill=%22%2304150C%22>B</text></svg>">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<!-- ================= TICKER ================= -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <span><b class="up">B</b> = HL/LL + %R &lt; -90</span>
+    <span><b class="dn">S</b> = HH/LH + %R &gt; -10</span>
+    <span><b class="st">★</b> = có mẫu nến đảo chiều xác nhận</span>
+    <span>EMA34 &gt; EMA89 → thiên hướng TĂNG</span>
+    <span>EMA34 &lt; EMA89 → thiên hướng GIẢM</span>
+    <span>Chỉ giữ lệnh khi cấu trúc HH&amp;LL chưa gãy</span>
+    <span><b class="up">B</b> = HL/LL + %R &lt; -90</span>
+    <span><b class="dn">S</b> = HH/LH + %R &gt; -10</span>
+    <span><b class="st">★</b> = có mẫu nến đảo chiều xác nhận</span>
+    <span>EMA34 &gt; EMA89 → thiên hướng TĂNG</span>
+    <span>EMA34 &lt; EMA89 → thiên hướng GIẢM</span>
+    <span>Chỉ giữ lệnh khi cấu trúc HH&amp;LL chưa gãy</span>
+  </div>
+</div>
+
+<!-- ================= NAV ================= -->
+<header class="site">
+  <div class="container nav">
+    <div class="brand">
+      <span class="brand-mark">B</span>
+      EMA·BB·MACD·HH&amp;LL
+    </div>
+    <button class="burger" id="burger" aria-label="Mở menu">☰</button>
+    <nav class="navlinks" id="navlinks">
+      <a href="#tongquan">Tổng quan</a>
+      <a href="#logic">Logic tín hiệu</a>
+      <a href="#quytac">Quy tắc</a>
+      <a href="#rui-ro">Rủi ro</a>
+      <a href="#vidu">Ví dụ</a>
+      <a href="#checklist" class="cta">Checklist</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="hero" style="border-top:none;">
+  <div class="container hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot"></span> PINE SCRIPT · TRADINGVIEW · V6</span>
+      <h1 class="h-hero">Hệ thống giao dịch<br><span class="accent">EMA · Bollinger · MACD</span><br>HH&amp;LL Scalper</h1>
+      <p class="lead">Kết hợp 5 lớp lọc độc lập — cấu trúc sóng giá, động lượng MACD, quá mua/quá bán Williams %R và mẫu nến đảo chiều — để xác nhận lẫn nhau trước khi vào lệnh Mua/Bán. Minh hoạ thực chiến trên Vàng, Bitcoin và Dầu WTI.</p>
+      <div class="hero-actions">
+        <a href="#logic" class="btn btn-primary">Xem logic tín hiệu →</a>
+        <a href="#checklist" class="btn btn-ghost">Checklist vào lệnh</a>
+      </div>
+      <div class="legend-row">
+        <span class="chip buy">● B — Mua</span>
+        <span class="chip buy">★ B★ — Mua nổi bật</span>
+        <span class="chip sell">● S — Bán</span>
+        <span class="chip sell">★ S★ — Bán nổi bật</span>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="vh"><span class="label">XAU/USD · 4H</span><span class="price">4,242.36</span></div>
+      <svg viewBox="0 0 420 220" xmlns="http://www.w3.org/2000/svg" id="hero-svg"></svg>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 1. TỔNG QUAN ================= -->
+<section id="tongquan">
+  <div class="container">
+    <span class="eyebrow-sm">01 · Kiến trúc hệ thống</span>
+    <h2 class="h-sec">6 lớp chỉ báo, một hệ thống duy nhất</h2>
+    <p class="sec-lead">Một tín hiệu chỉ đáng tin khi đồng thời thoả điều kiện cấu trúc giá và điều kiện động lượng — không giao dịch chỉ dựa vào một chỉ báo đơn lẻ.</p>
+
+    <div class="grid-6">
+      <div class="comp-card">
+        <div class="num">1</div>
+        <h3>EMA 34 &amp; EMA 89</h3>
+        <p>Xác định xu hướng nền: EMA34 &gt; EMA89 → thiên hướng TĂNG, ngược lại → GIẢM. Giá ép sát/thủng EMA là vùng phản ứng quan trọng.</p>
+        <div class="swatch-row">
+          <div class="swatch" style="background:var(--ema34)"></div>
+          <div class="swatch" style="background:var(--ema89)"></div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="num">2</div>
+        <h3>Bollinger Bands</h3>
+        <p>Điều kiện đủ cho tín hiệu MACD phụ: giá phải đóng cửa quanh Basis tại thời điểm MACD cắt Signal. Dải Upper/Lower dùng làm vùng chốt lời.</p>
+      </div>
+      <div class="comp-card">
+        <div class="num">3</div>
+        <h3>MACD (12,26,9)</h3>
+        <p>Xác nhận động lượng xu hướng: MacdLE (cắt lên) thiên mua, MacdSE (cắt xuống) thiên bán. Dùng làm bộ lọc phụ &amp; cảnh báo riêng.</p>
+      </div>
+      <div class="comp-card">
+        <div class="num">4</div>
+        <h3>HH &amp; LL Scalper</h3>
+        <p>Xác định cấu trúc sóng giá HH/HL/LH/LL bằng thuật toán Zig-Zag. Tự vẽ đường Kháng cự/Hỗ trợ động — điều kiện <em>cần</em> để phát sinh tín hiệu.</p>
+      </div>
+      <div class="comp-card">
+        <div class="num">5</div>
+        <h3>Williams %R (14)</h3>
+        <p>Bộ lọc quá mua/quá bán: chỉ xác nhận SELL khi %R &gt; -10, chỉ xác nhận BUY khi %R &lt; -90. Điều kiện <em>cần</em> thứ hai.</p>
+      </div>
+      <div class="comp-card">
+        <div class="num">6</div>
+        <h3>Mẫu nến đảo chiều</h3>
+        <p>Engulfing, Hammer, Sao Hôm/Mai... Nếu trùng đúng nến tín hiệu → nâng cấp thành <strong style="color:var(--gold)">B★ / S★</strong>, ưu tiên giao dịch.</p>
+      </div>
+    </div>
+
+    <div class="legend-strip">
+      <div class="legend-item"><div class="swatch-line" style="background:var(--ema34)"></div><span>EMA 34 — #FF9800</span></div>
+      <div class="legend-item"><div class="swatch-line" style="background:var(--ema89)"></div><span>EMA 89 — #2196F3</span></div>
+      <div class="legend-item"><div class="swatch-dot" style="border-color:var(--lime)"></div><span>Hỗ trợ động — #00E676</span></div>
+      <div class="legend-item"><div class="swatch-dot" style="border-color:var(--red)"></div><span>Kháng cự động — #F23645</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. LOGIC TÍN HIỆU ================= -->
+<section id="logic">
+  <div class="container">
+    <span class="eyebrow-sm">02 · Điều kiện cần &amp; đủ</span>
+    <h2 class="h-sec">Logic tín hiệu Buy / Sell</h2>
+    <p class="sec-lead">Mỗi tín hiệu B/S chỉ được vẽ lên biểu đồ khi đồng thời thoả 2 điều kiện. Tín hiệu trở thành <strong style="color:var(--gold)">★</strong> khi có thêm điều kiện thứ 3.</p>
+
+    <div class="logic-wrap">
+      <div class="logic-card buy">
+        <div class="logic-head">🟢 TÍN HIỆU MUA — B / B★</div>
+        <div class="logic-steps">
+          <div class="logic-step">
+            <div class="step-badge">①</div>
+            <div><h4>Cấu trúc giá</h4><p>Điểm pivot đáy được xác nhận là <strong>Higher-Low (HL)</strong> hoặc <strong>Lower-Low (LL)</strong> theo thuật toán Zig-Zag, độ trễ xác nhận 1 nến.</p></div>
+          </div>
+          <div class="logic-step">
+            <div class="step-badge">②</div>
+            <div><h4>Bộ lọc %R</h4><p>%R của nến ngay trước điểm tín hiệu <strong>&lt; -90</strong> (quá bán sâu) — lực bán đã cạn kiệt trước khi đảo chiều.</p></div>
+          </div>
+          <div class="logic-step star">
+            <div class="step-badge">★</div>
+            <div><h4>Mẫu nến (tuỳ chọn)</h4><p>Bullish Engulfing, Hammer, Piercing Line, Morning Star, Bullish Harami tại đúng nến tín hiệu → gắn thêm "★".</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="logic-card sell">
+        <div class="logic-head">🔴 TÍN HIỆU BÁN — S / S★</div>
+        <div class="logic-steps">
+          <div class="logic-step">
+            <div class="step-badge">①</div>
+            <div><h4>Cấu trúc giá</h4><p>Điểm pivot đỉnh được xác nhận là <strong>Higher-High (HH)</strong> hoặc <strong>Lower-High (LH)</strong> theo thuật toán Zig-Zag, độ trễ xác nhận 1 nến.</p></div>
+          </div>
+          <div class="logic-step">
+            <div class="step-badge">②</div>
+            <div><h4>Bộ lọc %R</h4><p>%R của nến ngay trước điểm tín hiệu <strong>&gt; -10</strong> (quá mua) — lực mua đã suy yếu trước khi đảo chiều.</p></div>
+          </div>
+          <div class="logic-step star">
+            <div class="step-badge">★</div>
+            <div><h4>Mẫu nến (tuỳ chọn)</h4><p>Bearish Engulfing, Shooting Star, Dark Cloud Cover, Evening Star, Bearish Harami tại đúng nến tín hiệu → gắn thêm "★".</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-callout">
+      <h4>Lớp xác nhận phụ — MACD (MacdLE / MacdSE)</h4>
+      <p>Mặc định ẩn trên biểu đồ, chỉ dùng để bắn cảnh báo/alert. Nên bật hiển thị khi cần thêm một lớp xác nhận độc lập cho lệnh khung 4H: MacdLE cùng chiều B → tăng độ tin cậy; MacdSE cùng chiều S → tăng độ tin cậy.</p>
+    </div>
+  </div>
+</section>
+<!-- ================= 3. QUY TẮC GIAO DỊCH ================= -->
+<section id="quytac">
+  <div class="container">
+    <span class="eyebrow-sm">03 · Vào lệnh · Giữ lệnh · Thoát lệnh · Đứng ngoài</span>
+    <h2 class="h-sec">Bộ quy tắc giao dịch</h2>
+    <p class="sec-lead">Bốn trạng thái quyết định — chọn tab để xem quy tắc chi tiết cho từng tình huống.</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="entry">① VÀO LỆNH</button>
+      <button class="tab-btn" data-tab="hold">② GIỮ LỆNH</button>
+      <button class="tab-btn" data-tab="exit">③ THOÁT LỆNH</button>
+      <button class="tab-btn" data-tab="wait">④ ĐỨNG NGOÀI</button>
+    </div>
+
+    <div class="tab-panel active" id="panel-entry">
+      <div class="rule-list">
+        <div class="rule-item"><div class="ico" style="background:var(--lime-soft)">🎯</div>
+          <p><strong>Ưu tiên 1 — Vào full khối lượng:</strong> xuất hiện B★ (hoặc S★) ngay tại đường Hỗ trợ/Kháng cự động, đồng pha với xu hướng khung lớn hơn (4H). Setup xác suất cao nhất.</p></div>
+        <div class="rule-item"><div class="ico" style="background:var(--gold-soft)">🔍</div>
+          <p><strong>Ưu tiên 2 — Thăm dò:</strong> chỉ có B/S thường nhưng trùng đúng vùng Hỗ trợ/Kháng cự, cùng chiều EMA34/EMA89. Chờ nến xác nhận trước khi vào thêm.</p></div>
+        <div class="rule-item"><div class="ico" style="background:var(--ema89)33">⏱️</div>
+          <p><strong>Xác nhận chéo khung:</strong> đối chiếu tín hiệu khung 15' với cấu trúc &amp; EMA khung 4H — chỉ giao dịch thuận xu hướng khung lớn.</p></div>
+        <div class="rule-item"><div class="ico" style="background:var(--red-soft)">🚫</div>
+          <p><strong>Không đuổi giá:</strong> nếu giá đã chạy xa điểm tín hiệu (&gt;1 lần khoảng cách tới EMA34) thì bỏ qua, chờ nhịp hồi.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-hold">
+      <div class="hold-grid">
+        <div class="hold-row">
+          <div class="hold-label">BUY</div>
+          <div class="hold-desc">hhllTrend vẫn = Tăng (giá còn trên đường Hỗ trợ) · EMA34 vẫn trên EMA89 · chưa xuất hiện S/S★ tại kháng cự phía trên · MACD Histogram vẫn dương hoặc đang mở rộng.</div>
+        </div>
+        <div class="hold-row">
+          <div class="hold-label">SELL</div>
+          <div class="hold-desc">hhllTrend vẫn = Giảm (giá còn dưới đường Kháng cự) · EMA34 vẫn dưới EMA89 · chưa xuất hiện B/B★ tại hỗ trợ phía dưới · MACD Histogram vẫn âm hoặc đang mở rộng.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-exit">
+      <div class="rule-list">
+        <div class="rule-item"><div class="ico" style="background:var(--red-soft)">⚡</div>
+          <p><strong>Thoát ngay (ưu tiên cao nhất):</strong> xuất hiện tín hiệu ngược chiều dạng ★ — đây là tín hiệu đảo chiều mạnh nhất hệ thống.</p></div>
+        <div class="rule-item"><div class="ico" style="background:var(--red-soft)">📉</div>
+          <p><strong>Thoát theo cấu trúc:</strong> giá đóng cửa phá vỡ đường Hỗ trợ/Kháng cự đang bảo vệ lệnh (hhllTrend đổi chiều) → thoát toàn bộ dù chưa có nhãn mới.</p></div>
+        <div class="rule-item"><div class="ico" style="background:var(--red-soft)">📊</div>
+          <p><strong>Thoát theo động lượng:</strong> MACD cắt Signal ngược chiều lệnh đang giữ, kết hợp Histogram thu hẹp liên tục 2–3 nến.</p></div>
+        <div class="rule-item"><div class="ico" style="background:var(--gold-soft)">💰</div>
+          <p><strong>Chốt lời từng phần:</strong> giá chạm dải Bollinger đối diện hoặc chạm đúng vùng Kháng cự/Hỗ trợ đối ứng gần nhất.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-wait">
+      <div class="rule-list">
+        <div class="rule-item"><div class="ico" style="background:#5D6E8633">〰️</div>
+          <p><strong>Thị trường đi ngang:</strong> EMA34/EMA89 đan xen liên tục, MACD sát vùng 0, %R không chạm 2 dải cực trị → nên đứng ngoài hoặc giao dịch khối lượng rất nhỏ.</p></div>
+        <div class="rule-item"><div class="ico" style="background:#5D6E8633">🔀</div>
+          <p><strong>Tín hiệu nhiễu:</strong> B/S liên tục đảo chiều trong thời gian ngắn — chờ tín hiệu ★ rõ ràng mới hành động.</p></div>
+        <div class="rule-item"><div class="ico" style="background:#5D6E8633">↩️</div>
+          <p><strong>Ngược xu hướng khung lớn:</strong> khung 4H downtrend rõ mà khung 15' xuất hiện B thường — chỉ nên coi là lệnh lướt ngắn/thăm dò, không giữ dài hạn.</p></div>
+        <div class="rule-item"><div class="ico" style="background:#5D6E8633">📰</div>
+          <p><strong>Sát thời điểm tin tức quan trọng:</strong> biến động có thể phá vỡ mọi vùng Hỗ trợ/Kháng cự — nên đứng ngoài hoặc giảm khối lượng.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 4. QUẢN LÝ RỦI RO ================= -->
+<section id="rui-ro">
+  <div class="container">
+    <span class="eyebrow-sm">04 · Đặt lệnh có kỷ luật</span>
+    <h2 class="h-sec">Quản lý rủi ro &amp; đặt lệnh</h2>
+    <p class="sec-lead">Không có hệ thống nào đúng 100% — quản lý rủi ro là thứ quyết định việc bạn còn tồn tại trên thị trường.</p>
+
+    <table class="risk-table">
+      <tr><th>Hạng mục</th><th>Quy tắc</th></tr>
+      <tr><td>Điểm dừng lỗ (SL)</td><td>Đặt ngay ngoài đường Hỗ trợ/Kháng cự động gần nhất, cộng thêm biên độ an toàn tối thiểu bằng 20–30% khoảng ATR để tránh bị quét theo nhiễu giá.</td></tr>
+      <tr><td>Điểm chốt lời (TP)</td><td>Mục tiêu 1: vùng Kháng cự/Hỗ trợ đối diện gần nhất (chốt 50%). Mục tiêu 2: dải Bollinger đối diện hoặc pivot HH/LL liền trước, hoặc thoát toàn bộ khi có tín hiệu ★ ngược chiều.</td></tr>
+      <tr><td>Tỷ lệ R:R tối thiểu</td><td>Chỉ vào lệnh khi R:R ≥ 1:1.5. Bỏ qua thiết lập nếu R:R &lt; 1:1.</td></tr>
+      <tr><td>Phân bổ khối lượng</td><td>Tín hiệu ★: tối đa khối lượng kế hoạch. Tín hiệu thường: 30–50% khối lượng, ưu tiên chờ nến xác nhận trước khi vào thêm.</td></tr>
+      <tr><td>Đa khung thời gian</td><td>Khung 4H xác định xu hướng chính &amp; vùng S/R lớn; khung 15' để tìm điểm vào lệnh chính xác theo đúng chiều xu hướng 4H.</td></tr>
+    </table>
+
+    <h3 style="font-family:var(--font-display); font-size:16px; margin:40px 0 16px;">Sơ đồ quyết định nhanh</h3>
+    <table class="decision-table">
+      <tr><td>B★ / S★ đúng tại đường Hỗ trợ/Kháng cự, cùng chiều xu hướng 4H</td><td><span class="badge enter">VÀO LỆNH</span></td></tr>
+      <tr><td>B / S thường, cùng chiều xu hướng, chưa tại vùng S/R đẹp</td><td><span class="badge scout">THĂM DÒ</span></td></tr>
+      <tr><td>Đang giữ lệnh, cấu trúc &amp; MACD vẫn thuận chiều</td><td><span class="badge hold">GIỮ LỆNH</span></td></tr>
+      <tr><td>Tín hiệu ★ ngược chiều lệnh đang giữ, hoặc gãy đường S/R bảo vệ</td><td><span class="badge exit">THOÁT LỆNH</span></td></tr>
+      <tr><td>Đi ngang, %R không chạm cực trị, tín hiệu B/S nhiễu liên tục</td><td><span class="badge wait">ĐỨNG NGOÀI</span></td></tr>
+    </table>
+  </div>
+</section>
+<!-- ================= 5. VÍ DỤ MINH HOẠ ================= -->
+<section id="vidu">
+  <div class="container">
+    <span class="eyebrow-sm">05 · Trích từ biểu đồ thật</span>
+    <h2 class="h-sec">Ví dụ minh hoạ thực tế</h2>
+    <p class="sec-lead">Toàn bộ ví dụ trích trực tiếp từ biểu đồ XAU/USD, BTC/USD và WTI để minh hoạ cách áp dụng bộ quy tắc vào tình huống thật.</p>
+
+    <div class="case-tabs">
+      <button class="case-tab active" data-case="c1">Vàng 4H — Mua đáy → Bán đỉnh</button>
+      <button class="case-tab" data-case="c2">Vàng 4H — Xu hướng mạnh</button>
+      <button class="case-tab" data-case="c3">Vàng 15' — Đứng ngoài trước cú sập</button>
+      <button class="case-tab" data-case="c4">Bitcoin 4H — Cảnh giác Mua ngược xu hướng</button>
+    </div>
+
+    <div class="case active" id="case-c1">
+      <div class="case-figure">
+        <img src="assets/img/chart1.jpg" alt="XAU/USD khung 4H 11/07–07/08/2026" loading="lazy">
+        <div class="cap">Hình 1 · XAU/USD — khung 4H, 11/07 – 07/08/2026</div>
+      </div>
+      <div class="case-body">
+        <h3>Chu trình Mua đáy → Giữ lệnh → Bán đỉnh</h3>
+        <div class="tagrow"><span class="chip buy">B tại 4,020–4,060</span><span class="chip sell">S★ tại 4,320</span></div>
+        <p>Trong vùng tích luỹ 4.020–4.060, giá liên tục xuất hiện tín hiệu <strong>B</strong> đúng tại đường Hỗ trợ — mẫu hình "gom lệnh thăm dò" cho tới khi bứt phá khỏi vùng đi ngang.</p>
+        <p>Khi giá phá Kháng cự và tăng dốc (nến xanh dài, MACD Histogram mở rộng mạnh) — đây là tín hiệu <strong>GIỮ LỆNH</strong> tốt nhất, không nên thoát sớm.</p>
+        <p>Tín hiệu <strong>S★</strong> chỉ xuất hiện tại đỉnh 4.320 khi giá chạm Kháng cự, kèm 2 nến đỏ đảo chiều rõ rệt — điểm <strong>THOÁT LỆNH</strong> hợp lệ.</p>
+      </div>
+    </div>
+
+    <div class="case" id="case-c2">
+      <div class="case-figure">
+        <img src="assets/img/chart2.jpg" alt="XAU/USD khung 4H xu hướng tăng 4.625–5.600" loading="lazy">
+        <div class="cap">Hình 2 · XAU/USD — khung 4H, xu hướng tăng 4.625 → 5.600</div>
+      </div>
+      <div class="case-body">
+        <h3>Tránh thoát lệnh sớm trong xu hướng mạnh</h3>
+        <div class="tagrow"><span class="chip sell">S thường (nhiều lần)</span><span class="chip sell">S tại đỉnh 5.600</span></div>
+        <p>Trong nhịp tăng mạnh, hệ thống liên tục phát ra nhãn <strong>S thường</strong> tại nhiều đỉnh phụ — đây là nhịp điều chỉnh ngắn, KHÔNG phải đảo chiều toàn phần.</p>
+        <p>Vì đường Hỗ trợ phía dưới không hề bị phá và EMA34 vẫn trên EMA89, lệnh Buy vẫn cần được <strong>GIỮ NGUYÊN</strong> qua từng nhãn S thường này.</p>
+        <p>Chỉ khi giá tạo đỉnh 5.600 kèm S tại đúng vùng Kháng cự và sau đó phá Hỗ trợ, thị trường mới thật sự đảo chiều xuống 4.405.</p>
+      </div>
+    </div>
+
+    <div class="case" id="case-c3">
+      <div class="case-figure">
+        <img src="assets/img/chart6.jpg" alt="XAU/USD khung 15 phút cú giảm mạnh 5.620–5.070" loading="lazy">
+        <div class="cap">Hình 6 · XAU/USD — khung 15 phút, cú giảm mạnh 5.620 → 5.070</div>
+      </div>
+      <div class="case-body">
+        <h3>Đứng ngoài trước cú sập, chờ %R quá bán</h3>
+        <div class="tagrow"><span class="chip sell">S tại 5.450–5.600</span><span class="chip buy">B tại 5.100–5.117</span></div>
+        <p>Trước khi giá lao dốc, hàng loạt tín hiệu <strong>S</strong> xuất hiện tại đỉnh phụ 5.450–5.600 — đúng theo quy tắc thuận xu hướng giảm khung lớn.</p>
+        <p>Trong nhịp rơi thẳng đứng, KHÔNG có tín hiệu Mua nào vì %R chưa kịp chạm ngưỡng quá bán sâu — đây là lúc cần <strong>ĐỨNG NGOÀI</strong>, không "bắt đáy dao rơi".</p>
+        <p>Chỉ khi giá chững lại quanh 5.100–5.117 và xuất hiện nhãn <strong>B</strong> đi kèm %R quá bán, hệ thống mới xác nhận đủ điều kiện Mua hồi kỹ thuật.</p>
+      </div>
+    </div>
+
+    <div class="case" id="case-c4">
+      <div class="case-figure">
+        <img src="assets/img/chart7.jpg" alt="BTC/USD khung 4H đảo chiều từ đỉnh 98.000" loading="lazy">
+        <div class="cap">Hình 7 · BTC/USD — khung 4H, đảo chiều từ đỉnh 98.000</div>
+      </div>
+      <div class="case-body">
+        <h3>Cảnh giác với tín hiệu Mua ngược xu hướng</h3>
+        <div class="tagrow"><span class="chip sell">S★ tại 98.000</span><span class="chip buy">B thường (đáy phụ)</span></div>
+        <p>Tín hiệu <strong>S★</strong> tại đỉnh 98.000 là điểm Bán chất lượng cao nhất biểu đồ này (đủ cả 3 điều kiện).</p>
+        <p>Trong nhịp giảm về 87.650, vẫn có vài nhãn <strong>B thường</strong> tại đáy phụ — nhưng vì Kháng cự phía trên chưa bị phá và cấu trúc vẫn tạo LH/LL, các tín hiệu này chỉ nên xem là <strong>lệnh lướt ngắn hạn/thăm dò</strong>.</p>
+        <p>Nếu không chắc chắn quản lý được rủi ro, tốt nhất đứng ngoài chờ tín hiệu B★ thật sự đảo chiều cấu trúc.</p>
+      </div>
+    </div>
+
+    <div class="gallery">
+      <div class="gcard">
+        <img src="assets/img/chart3.jpg" alt="XAU/USD 15 phút 04-05/08" loading="lazy">
+        <div class="gbody"><span class="gtag">HÌNH 3 · XAU/USD 15' — 04–05/08</span><h4>Xu hướng giảm rõ</h4><p>Nhãn S liên tiếp tại đỉnh phụ là điểm Bán thuận xu hướng hợp lệ; B chỉ nên thăm dò nhỏ vì ngược xu hướng chính.</p></div>
+      </div>
+      <div class="gcard">
+        <img src="assets/img/chart4.jpg" alt="XAU/USD 15 phút 03-04/08" loading="lazy">
+        <div class="gbody"><span class="gtag">HÌNH 4 · XAU/USD 15' — 03–04/08</span><h4>Chuỗi S★ chốt lời</h4><p>Chuỗi S★ liên tiếp tại đỉnh trong nhịp tăng là điểm chốt lời từng phần hợp lý; gãy Hỗ trợ cuối biểu đồ vẫn nên thoát theo quy tắc phá cấu trúc.</p></div>
+      </div>
+      <div class="gcard">
+        <img src="assets/img/chart5.jpg" alt="XAU/USD 15 phút 01-03/02" loading="lazy">
+        <div class="gbody"><span class="gtag">HÌNH 5 · XAU/USD 15' — 01–03/02</span><h4>Chu kỳ dao động biên</h4><p>Mua đáy → tăng → Bán đỉnh S★ → giảm → Mua đáy lặp lại: minh hoạ chu kỳ range điển hình, phù hợp mua thấp/bán cao trong biên.</p></div>
+      </div>
+      <div class="gcard">
+        <img src="assets/img/chart8.jpg" alt="BTC/USD 4H tháng 11-12" loading="lazy">
+        <div class="gbody"><span class="gtag">HÌNH 8 · BTC/USD 4H — tháng 11–12</span><h4>Tín hiệu ★ vẫn có thể thất bại</h4><p>B★ đầu biểu đồ THẤT BẠI (giá vẫn giảm sâu). B★ tại đáy 84.800 sau đó mới là điểm đảo chiều thật, được cấu trúc xác nhận.</p></div>
+      </div>
+      <div class="gcard">
+        <img src="assets/img/chart9.jpg" alt="WTI 4H 15/07-07/08" loading="lazy">
+        <div class="gbody"><span class="gtag">HÌNH 9 · WTI 4H — 15/07–07/08</span><h4>S★ mở đầu nhịp giảm lớn</h4><p>S★ tại đỉnh ~92 mở đầu nhịp giảm về 73–74; vùng đáy hình thành tam giác tăng, chờ tín hiệu B★ xác nhận trước khi Mua.</p></div>
+      </div>
+      <div class="gcard">
+        <img src="assets/img/chart10.jpg" alt="WTI 4H 08/06-13/07" loading="lazy">
+        <div class="gbody"><span class="gtag">HÌNH 10 · WTI 4H — 08/06–13/07</span><h4>Hồi ngắn hạn trong downtrend</h4><p>Nhiều nhãn B/B★ trong downtrend là lệnh hồi ngắn hạn (một số thất bại) — chỉ khi đáy 65–66 xác nhận mới chuyển thiên hướng Mua.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- ================= 6. CHECKLIST ================= -->
+<section id="checklist">
+  <div class="container">
+    <span class="eyebrow-sm">06 · Rà soát trước khi bấm lệnh</span>
+    <h2 class="h-sec">Checklist trước khi vào lệnh</h2>
+    <p class="sec-lead">Tick từng mục trước mỗi lần đặt lệnh — chỉ vào lệnh khi trả lời "Có" cho phần lớn mục dưới đây. Trạng thái được lưu lại trên trình duyệt của bạn.</p>
+
+    <div class="checklist-wrap">
+      <div class="checklist-card buy">
+        <div class="checklist-head">CHECKLIST — LỆNH MUA (BUY) <span class="count" data-count="buy">0/7</span></div>
+        <div class="checklist-items" data-group="buy">
+          <label class="citem"><input type="checkbox"><span>Điểm pivot là HL hoặc LL (nhãn B đã hiện trên biểu đồ)?</span></label>
+          <label class="citem"><input type="checkbox"><span>%R nến trước tín hiệu đã xuống dưới -90 (quá bán)?</span></label>
+          <label class="citem"><input type="checkbox"><span>Có mẫu nến đảo chiều tăng xác nhận (nhãn B★)?</span></label>
+          <label class="citem"><input type="checkbox"><span>Giá đang ở tại/quanh đường Hỗ trợ chấm xanh?</span></label>
+          <label class="citem"><input type="checkbox"><span>EMA34 đang trên (hoặc chuẩn bị cắt lên) EMA89?</span></label>
+          <label class="citem"><input type="checkbox"><span>Xu hướng khung 4H đồng thuận chiều Mua?</span></label>
+          <label class="citem"><input type="checkbox"><span>R:R tới vùng Kháng cự gần nhất ≥ 1:1.5?</span></label>
+        </div>
+      </div>
+
+      <div class="checklist-card sell">
+        <div class="checklist-head">CHECKLIST — LỆNH BÁN (SELL) <span class="count" data-count="sell">0/7</span></div>
+        <div class="checklist-items" data-group="sell">
+          <label class="citem"><input type="checkbox"><span>Điểm pivot là HH hoặc LH (nhãn S đã hiện trên biểu đồ)?</span></label>
+          <label class="citem"><input type="checkbox"><span>%R nến trước tín hiệu đã lên trên -10 (quá mua)?</span></label>
+          <label class="citem"><input type="checkbox"><span>Có mẫu nến đảo chiều giảm xác nhận (nhãn S★)?</span></label>
+          <label class="citem"><input type="checkbox"><span>Giá đang ở tại/quanh đường Kháng cự chấm đỏ?</span></label>
+          <label class="citem"><input type="checkbox"><span>EMA34 đang dưới (hoặc chuẩn bị cắt xuống) EMA89?</span></label>
+          <label class="citem"><input type="checkbox"><span>Xu hướng khung 4H đồng thuận chiều Bán?</span></label>
+          <label class="citem"><input type="checkbox"><span>R:R tới vùng Hỗ trợ gần nhất ≥ 1:1.5?</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="reset-row"><button class="reset-btn" id="resetChecklist">↺ Đặt lại checklist</button></div>
+
+    <div class="golden-rule">
+      <h4>⚠️ Nguyên tắc vàng</h4>
+      <p>Không có hệ thống nào đúng 100%. Luôn đặt điểm dừng lỗ ngay khi vào lệnh, không gồng lỗ, không vào lệnh khi chưa thoả ít nhất điều kiện ① và ② ở Mục 2. Tín hiệu ★ giúp tăng xác suất nhưng không đảm bảo chắc thắng — minh chứng rõ ở Hình 8, nơi một tín hiệu B★ vẫn có thể thất bại.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7. LƯU Ý & FOOTER ================= -->
+<section id="luu-y">
+  <div class="container">
+    <span class="eyebrow-sm">07 · Trước khi giao dịch thật</span>
+    <h2 class="h-sec">Lưu ý quan trọng</h2>
+    <div class="rule-list" style="margin-bottom:28px;">
+      <div class="rule-item"><div class="ico" style="background:var(--gold-soft)">🧪</div>
+        <p><strong>Backtest trước khi áp dụng thật:</strong> chạy thử hệ thống trên dữ liệu lịch sử của từng tài sản (Vàng, Bitcoin, Dầu...) và từng khung thời gian trước khi giao dịch bằng tiền thật.</p></div>
+      <div class="rule-item"><div class="ico" style="background:var(--gold-soft)">⭐</div>
+        <p><strong>Không phải mọi tín hiệu ★ đều thắng:</strong> như minh hoạ ở Hình 8, tín hiệu B★ đầu biểu đồ Bitcoin vẫn thất bại — luôn tuân thủ quản lý rủi ro ở Mục 4.</p></div>
+      <div class="rule-item"><div class="ico" style="background:var(--gold-soft)">⏳</div>
+        <p><strong>Độ trễ xác nhận pivot:</strong> thuật toán Zig-Zag cần "Right Bars" để xác nhận đỉnh/đáy, nhãn B/S luôn xuất hiện chậm hơn 1 nến so với đỉnh/đáy thật.</p></div>
+      <div class="rule-item"><div class="ico" style="background:var(--gold-soft)">📰</div>
+        <p><strong>Tin tức &amp; thanh khoản:</strong> thời điểm công bố dữ liệu kinh tế quan trọng có thể khiến giá phá vỡ mọi vùng Hỗ trợ/Kháng cự bất thường.</p></div>
+    </div>
+
+    <div class="disclaimer">
+      <h4>Miễn trừ trách nhiệm</h4>
+      <p>Trang này được biên soạn với mục đích tổng hợp và trực quan hoá logic của bộ chỉ báo kỹ thuật; đây <strong>không phải là lời khuyên đầu tư hay khuyến nghị mua/bán</strong>. Thị trường tài chính (Vàng, Bitcoin, Hàng hoá...) luôn tiềm ẩn rủi ro cao; người giao dịch cần tự nghiên cứu, kiểm chứng và chịu trách nhiệm với quyết định của mình.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container footer-row">
+    <div class="fbrand"><span class="brand-mark" style="width:22px;height:22px;font-size:11px;">B</span> EMA · Bollinger · MACD · HH&amp;LL · Williams %R</div>
+    <p>Chỉ mang tính tham khảo kỹ thuật — không phải khuyến nghị đầu tư · Nguồn chỉ báo: TradingView Pine Script v6</p>
+  </div>
+</footer>
+
+<button class="top-btn" id="topBtn" aria-label="Lên đầu trang">↑</button>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
