@@ -80,7 +80,7 @@ a{ color:inherit; }
   display:inline-flex;
   gap:40px;
   padding-left:100%;
-  animation: ticker-scroll 32s linear infinite;
+  animation: ticker-scroll 100s linear infinite;
   font-family:var(--font-mono);
   font-size:12.5px;
   letter-spacing:.02em;
