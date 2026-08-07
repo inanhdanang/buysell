@@ -7,6 +7,71 @@
 <meta name="description" content="Hệ thống giao dịch kỹ thuật kết hợp EMA, Bollinger Bands, MACD, HH&LL Scalper và bộ lọc Williams %R. Quy tắc Buy/Sell, giữ lệnh, thoát lệnh, quản lý rủi ro — minh hoạ thực chiến trên Vàng, Bitcoin, Dầu WTI.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%2300E676%22/><text x=%2250%22 y=%2268%22 font-size=%2258%22 font-family=%22monospace%22 font-weight=%22700%22 text-anchor=%22middle%22 fill=%22%2304150C%22>B</text></svg>">
 <link rel="stylesheet" href="assets/css/style.css">
+<style>
+.read-btn{
+  position:fixed;
+  left:22px;
+  bottom:22px;
+  z-index:999;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  border:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+  background:#00E676;
+  color:#04150C;
+  box-shadow:0 6px 18px rgba(0,230,118,.35);
+  transition:transform .15s ease, background .2s ease, opacity .2s ease;
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(8px);
+}
+.read-btn.show{
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0);
+}
+.read-btn.reading{
+  background:#F23645;
+  color:#fff;
+}
+.read-btn:hover{ transform:scale(1.06); }
+.read-btn.show.reading:hover{ transform:scale(1.06); }
+
+.sec-read-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin:10px 0 20px;
+  padding:6px 14px;
+  border-radius:999px;
+  border:1px solid rgba(0,230,118,.45);
+  background:rgba(0,230,118,.08);
+  color:#00E676;
+  font-size:13px;
+  font-family:inherit;
+  line-height:1.2;
+  cursor:pointer;
+  transition:background .2s ease, transform .15s ease, color .2s ease;
+}
+.sec-read-btn:hover{
+  background:rgba(0,230,118,.18);
+  transform:translateY(-1px);
+}
+.sec-read-btn.reading{
+  background:#00E676;
+  color:#04150C;
+  border-color:#00E676;
+}
+.sec-read-btn .tts-icon{
+  font-size:14px;
+  line-height:1;
+}
+</style>
 </head>
 <body>
 
@@ -444,6 +509,160 @@
 </footer>
 
 <button class="top-btn" id="topBtn" aria-label="Lên đầu trang">↑</button>
+<button class="read-btn" id="readBtn" aria-label="Đọc toàn bộ trang" title="Đọc toàn bộ trang">🔊</button>
 <script src="assets/js/main.js"></script>
+<script>
+(function(){
+  if(!('speechSynthesis' in window)) return; // trình duyệt không hỗ trợ đọc văn bản
+
+  var synth = window.speechSynthesis;
+  var EXCLUDE_TAGS = ['SCRIPT','STYLE','BUTTON','SVG','IMG','INPUT','NOSCRIPT','NAV'];
+  var EXCLUDE_CLASSES = ['ticker'];
+
+  function isExcludedEl(el){
+    if(!el || el.nodeType !== 1) return false;
+    if(EXCLUDE_TAGS.indexOf(el.tagName) !== -1) return true;
+    for(var i = 0; i < EXCLUDE_CLASSES.length; i++){
+      if(el.classList && el.classList.contains(EXCLUDE_CLASSES[i])) return true;
+    }
+    return false;
+  }
+
+  // Lấy text đọc được từ 1 phần tử, bỏ qua nút bấm, script, ticker, nav...
+  function extractText(root){
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var parts = [];
+    var node;
+    while((node = walker.nextNode())){
+      var p = node.parentElement;
+      var excluded = false;
+      while(p && p !== root.parentElement){
+        if(isExcludedEl(p)){ excluded = true; break; }
+        p = p.parentElement;
+      }
+      if(excluded) continue;
+      var t = node.nodeValue.replace(/\s+/g, ' ').trim();
+      if(t) parts.push(t);
+    }
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function chunkText(text, size){
+    size = size || 180;
+    var words = text.split(' ');
+    var chunks = [];
+    var cur = '';
+    for(var i = 0; i < words.length; i++){
+      var w = words[i];
+      if((cur + ' ' + w).trim().length > size){
+        if(cur) chunks.push(cur);
+        cur = w;
+      } else {
+        cur = cur ? (cur + ' ' + w) : w;
+      }
+    }
+    if(cur) chunks.push(cur);
+    return chunks;
+  }
+
+  // ============ Bộ điều khiển đọc dùng chung cho mọi nút ============
+  var TTS = { activeBtn: null, isPlaying: false, isPaused: false, queue: [] };
+
+  function setBtnState(btn, state){
+    var iconEl = btn.querySelector('.tts-icon') || btn;
+    var icon = state === 'playing' ? '⏸' : (state === 'paused' ? '▶' : (btn.dataset.icon || '🔊'));
+    iconEl.textContent = icon;
+    btn.classList.toggle('reading', state === 'playing' || state === 'paused');
+    var label = state === 'playing' ? 'Tạm dừng đọc' : (state === 'paused' ? 'Tiếp tục đọc' : (btn.dataset.label || 'Đọc'));
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+  }
+
+  function stopAll(){
+    synth.cancel();
+    if(TTS.activeBtn) setBtnState(TTS.activeBtn, 'idle');
+    TTS.activeBtn = null;
+    TTS.isPlaying = false;
+    TTS.isPaused = false;
+    TTS.queue = [];
+  }
+
+  function speakNext(){
+    if(!TTS.isPlaying || TTS.isPaused) return;
+    if(!TTS.queue.length){
+      if(TTS.activeBtn) setBtnState(TTS.activeBtn, 'idle');
+      TTS.activeBtn = null;
+      TTS.isPlaying = false;
+      TTS.isPaused = false;
+      return;
+    }
+    var chunk = TTS.queue.shift();
+    var utter = new SpeechSynthesisUtterance(chunk);
+    utter.lang = 'vi-VN';
+    utter.rate = 1;
+    utter.onend = function(){ speakNext(); };
+    utter.onerror = function(){ speakNext(); };
+    synth.speak(utter);
+  }
+
+  function toggleRead(btn, getText){
+    if(TTS.activeBtn === btn){
+      if(TTS.isPlaying && !TTS.isPaused){
+        TTS.isPaused = true;
+        synth.pause();
+        setBtnState(btn, 'paused');
+      } else if(TTS.isPaused){
+        TTS.isPaused = false;
+        synth.resume();
+        setBtnState(btn, 'playing');
+      }
+      return;
+    }
+    stopAll();
+    var text = getText();
+    if(!text) return;
+    TTS.queue = chunkText(text);
+    TTS.activeBtn = btn;
+    TTS.isPlaying = true;
+    TTS.isPaused = false;
+    setBtnState(btn, 'playing');
+    speakNext();
+  }
+
+  window.addEventListener('beforeunload', function(){ synth.cancel(); });
+
+  // ============ Nút đọc toàn bộ trang (nổi ở góc trái) ============
+  var readBtn = document.getElementById('readBtn');
+  if(readBtn){
+    readBtn.classList.add('show');
+    readBtn.dataset.icon = '🔊';
+    readBtn.dataset.label = 'Đọc toàn bộ trang';
+    readBtn.addEventListener('click', function(){
+      toggleRead(readBtn, function(){ return extractText(document.body); });
+    });
+  }
+
+  // ============ Nút đọc riêng từng mục ============
+  document.querySelectorAll('body > section').forEach(function(sec){
+    var heading = sec.querySelector('h1.h-hero, h2.h-sec');
+    if(!heading) return;
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'sec-read-btn tts-btn';
+    btn.dataset.icon = '🔊';
+    btn.dataset.label = 'Đọc mục ' + heading.textContent.trim();
+    btn.innerHTML = '<span class="tts-icon">🔊</span><span class="tts-label">Đọc mục này</span>';
+    btn.title = btn.dataset.label;
+    btn.setAttribute('aria-label', btn.dataset.label);
+
+    heading.insertAdjacentElement('afterend', btn);
+
+    btn.addEventListener('click', function(){
+      toggleRead(btn, function(){ return extractText(sec); });
+    });
+  });
+})();
+</script>
 </body>
 </html>
