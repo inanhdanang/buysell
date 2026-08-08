@@ -565,6 +565,90 @@
     return chunks;
   }
 
+  // ============ Từ điển phát âm thuật ngữ phân tích kỹ thuật ============
+  // Chuyển các từ/ký hiệu tiếng Anh & ký hiệu toán học sang cách đọc gần với
+  // cách dân phân tích kỹ thuật (trader) hay nói ngoài đời, để giọng đọc
+  // tiếng Việt (vi-VN) không đọc kiểu "Google dịch" từng chữ cái.
+  // Có thể chỉnh sửa/thêm dòng bên dưới nếu vẫn thấy từ nào đọc chưa đúng ý.
+  var PRONOUNCE_RULES = [
+    // Ký hiệu / toán tử
+    [/&/g, ' và '],
+    [/≥/g, ' lớn hơn hoặc bằng '],
+    [/≤/g, ' nhỏ hơn hoặc bằng '],
+    [/>/g, ' lớn hơn '],
+    [/</g, ' nhỏ hơn '],
+    [/→/g, ' dẫn đến '],
+    [/★/g, ' sao '],
+    [/●/g, ' '],
+    [/—/g, ', '],
+
+    // Chỉ báo & thuật ngữ kỹ thuật (xử lý cụm dài trước, từ đơn sau)
+    [/Bollinger\s+Bands/gi, 'Bô-lin-giơ Ben'],
+    [/Bollinger/gi, 'Bô-lin-giơ'],
+    [/Williams\s*%R/gi, 'Uy-li-âm phần trăm Ar'],
+    [/%R/g, ' phần trăm Ar '],
+    [/MacdLE/gi, 'Mắc Đi eo i'],
+    [/MacdSE/gi, 'Mắc Đi ét i'],
+    [/\bMACD\b/gi, 'Mắc Đi'],
+    [/Zig-?Zag/gi, 'Zíc Zắc'],
+    [/\bSignal\b/gi, 'Xích-nồ'],
+    [/\bHistogram\b/gi, 'Hít-tô-gram'],
+    [/\bBasis\b/gi, 'Bây-xis'],
+    [/\bUpper\b/gi, 'Ắp-pơ'],
+    [/\bLower\b/gi, 'Lô-ơ'],
+    [/\bpivot\b/gi, 'pi-vốt'],
+    [/\bEngulfing\b/gi, 'In-gấu-phing'],
+    [/\bHammer\b/gi, 'Ham-mơ'],
+    [/\bPiercing Line\b/gi, 'Piơ-xing Lai'],
+    [/\bMorning Star\b/gi, 'Mo-ninh Xta'],
+    [/\bShooting Star\b/gi, 'Su-tinh Xta'],
+    [/\bDark Cloud Cover\b/gi, 'Đác Klao Cơ-vơ'],
+    [/\bEvening Star\b/gi, 'Íp-ninh Xta'],
+    [/\bBullish Harami\b/gi, 'Bu-lích Ha-ra-mi'],
+    [/\bBearish Harami\b/gi, 'Be-rích Ha-ra-mi'],
+    [/\bHarami\b/gi, 'Ha-ra-mi'],
+    [/\bScalper\b/gi, 'Xcal-pơ'],
+
+    // Cặp tài sản & khung thời gian
+    [/XAU\/USD/gi, 'Vàng trên Đô la Mỹ'],
+    [/BTC\/USD/gi, 'Bitcoin trên Đô la Mỹ'],
+    [/\bWTI\b/g, 'Đắp-liu-Ti-Ai'],
+    [/\bEMA\s*(\d+)/gi, 'i-em-ây $1'],
+    [/\bEMA\b/gi, 'i-em-ây'],
+    [/\b(\d+)H\b/g, '$1 giờ'],
+    [/(\d+)'/g, '$1 phút'],
+
+    // Từ viết tắt quản lý rủi ro & cấu trúc giá
+    [/\bATR\b/g, 'Ây-Ti-Ar'],
+    [/\bTP\b/g, 'Ti-Pi'],
+    [/\bSL\b/g, 'Ét-Eo'],
+    [/\bR:R\b/g, 'Ar Ar'],
+    [/\bS\/R\b/g, 'Hỗ trợ Kháng cự'],
+    [/\bHH\b/g, 'Hai-dơ Hai'],
+    [/\bLL\b/g, 'Lô-ơ Lô'],
+    [/\bHL\b/g, 'Hai-dơ Lô'],
+    [/\bLH\b/g, 'Lô-ơ Hai'],
+
+    // Lệnh mua/bán viết hoa kiểu tiếng Anh
+    [/\bBUY\b/g, 'Mua'],
+    [/\bSELL\b/g, 'Bán'],
+
+    // Nhãn hiệu / công cụ ở đầu trang
+    [/PINE SCRIPT/gi, 'Pain Xcríp'],
+    [/TRADINGVIEW/gi, 'Trê-đing-viu'],
+    [/\bV6\b/g, 'phiên bản 6'],
+
+    // Dấu gạch chéo còn sót lại giữa 2 cụm từ -> đọc thành "hoặc"
+    [/\s*\/\s*/g, ' hoặc ']
+  ];
+
+  function toSpeechText(text){
+    for(var i = 0; i < PRONOUNCE_RULES.length; i++){
+      text = text.replace(PRONOUNCE_RULES[i][0], PRONOUNCE_RULES[i][1]);
+    }
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
   // ============ Bộ điều khiển đọc dùng chung cho mọi nút ============
   var TTS = { activeBtn: null, isPlaying: false, isPaused: false, queue: [] };
 
@@ -621,7 +705,7 @@
     stopAll();
     var text = getText();
     if(!text) return;
-    TTS.queue = chunkText(text);
+    TTS.queue = chunkText(toSpeechText(text));
     TTS.activeBtn = btn;
     TTS.isPlaying = true;
     TTS.isPaused = false;
